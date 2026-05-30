@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VoiceMatch</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0d14;font-family:'Zen Kaku Gothic New',sans-serif;color:#e8e8f0;}
+select option{background:#1a1a2e;color:#e0e0f0;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const SONG_DB = [
+  {id:1,title:"ドライフラワー",artist:"優里",genre:"J-POP",vocalRange:{low:50,high:70},leap:2,highNoteFreq:2,tempo:76,rhythmType:"straight",rhythmDiff:2},
+  {id:2,title:"夜に駆ける",artist:"YOASOBI",genre:"J-POP",vocalRange:{low:52,high:74},leap:4,highNoteFreq:4,tempo:132,rhythmType:"offbeat",rhythmDiff:4},
+  {id:3,title:"Lemon",artist:"米津玄師",genre:"J-POP",vocalRange:{low:48,high:71},leap:3,highNoteFreq:3,tempo:75,rhythmType:"straight",rhythmDiff:2},
+  {id:4,title:"炎",artist:"LiSA",genre:"アニソン",vocalRange:{low:52,high:76},leap:4,highNoteFreq:5,tempo:90,rhythmType:"offbeat",rhythmDiff:3},
+  {id:5,title:"うっせぇわ",artist:"Ado",genre:"J-POP",vocalRange:{low:53,high:77},leap:5,highNoteFreq:5,tempo:160,rhythmType:"complex",rhythmDiff:5},
+  {id:6,title:"Shape of You",artist:"Ed Sheeran",genre:"洋楽",vocalRange:{low:50,high:67},leap:2,highNoteFreq:1,tempo:96,rhythmType:"offbeat",rhythmDiff:3},
+  {id:7,title:"Someone Like You",artist:"Adele",genre:"洋楽",vocalRange:{low:46,high:68},leap:3,highNoteFreq:2,tempo:67,rhythmType:"straight",rhythmDiff:1},
+  {id:8,title:"Blinding Lights",artist:"The Weeknd",genre:"洋楽",vocalRange:{low:53,high:72},leap:3,highNoteFreq:3,tempo:171,rhythmType:"straight",rhythmDiff:3},
+  {id:9,title:"残酷な天使のテーゼ",artist:"高橋洋子",genre:"アニソン",vocalRange:{low:54,high:76},leap:5,highNoteFreq:5,tempo:152,rhythmType:"complex",rhythmDiff:5},
+  {id:10,title:"明日も",artist:"YOASOBI",genre:"J-POP",vocalRange:{low:50,high:69},leap:2,highNoteFreq:2,tempo:120,rhythmType:"straight",rhythmDiff:2},
+  {id:11,title:"ハルジオン",artist:"YOASOBI",genre:"J-POP",vocalRange:{low:51,high:71},leap:3,highNoteFreq:3,tempo:128,rhythmType:"offbeat",rhythmDiff:3},
+  {id:12,title:"Stay With Me",artist:"Sam Smith",genre:"洋楽",vocalRange:{low:45,high:70},leap:3,highNoteFreq:3,tempo:80,rhythmType:"straight",rhythmDiff:2},
+  {id:13,title:"愛唄",artist:"GReeeeN",genre:"J-POP",vocalRange:{low:49,high:67},leap:2,highNoteFreq:1,tempo:68,rhythmType:"straight",rhythmDiff:1},
+  {id:14,title:"チェリー",artist:"スピッツ",genre:"J-POP",vocalRange:{low:50,high:68},leap:2,highNoteFreq:2,tempo:104,rhythmType:"straight",rhythmDiff:2},
+  {id:15,title:"紅蓮華",artist:"LiSA",genre:"アニソン",vocalRange:{low:53,high:75},leap:4,highNoteFreq:4,tempo:152,rhythmType:"offbeat",rhythmDiff:4},
+  {id:16,title:"ロキ",artist:"まふまふ",genre:"アニソン",vocalRange:{low:55,high:78},leap:5,highNoteFreq:5,tempo:178,rhythmType:"complex",rhythmDiff:5},
+  {id:17,title:"366日",artist:"HY",genre:"J-POP",vocalRange:{low:48,high:66},leap:2,highNoteFreq:1,tempo:64,rhythmType:"straight",rhythmDiff:1},
+  {id:18,title:"Bohemian Rhapsody",artist:"Queen",genre:"洋楽",vocalRange:{low:44,high:72},leap:5,highNoteFreq:4,tempo:144,rhythmType:"complex",rhythmDiff:5},
+  {id:19,title:"Hello",artist:"Adele",genre:"洋楽",vocalRange:{low:47,high:69},leap:3,highNoteFreq:2,tempo:75,rhythmType:"straight",rhythmDiff:2},
+  {id:20,title:"糸",artist:"中島みゆき",genre:"J-POP",vocalRange:{low:47,high:65},leap:2,highNoteFreq:1,tempo:60,rhythmType:"straight",rhythmDiff:1},
+];
+const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+function midiToNote(m){return NOTE_NAMES[m%12]+(Math.floor(m/12)-1);}
+function tempoLabel(b){if(b<70)return{label:"スロー",color:"#60c0d0"};if(b<100)return{label:"ミドル",color:"#80d090"};if(b<140)return{label:"アップ",color:"#d0b040"};return{label:"ハイテンポ",color:"#e07060"};}
+const RHYTHM_LABEL={straight:{label:"4つ打ち",icon:"🟦"},offbeat:{label:"裏拍あり",icon:"🟨"},complex:{label:"複合リズム",icon:"🟥"}};
+function diffColor(d){return["","#60c890","#90d860","#d0c040","#e08040","#e04040"][d];}
+function diffLabel(d){return["","やさしい","初級","中級","上級","激ムズ"][d];}
+function calcOverallDiff(s){return Math.round((s.rhythmDiff+s.leap+s.highNoteFreq)/3);}
+function calcSimilarity(base,cand,filters){
+  if(cand.id===base.id)return -1;
+  const ol=Math.max(base.vocalRange.low,cand.vocalRange.low);
+  const oh=Math.min(base.vocalRange.high,cand.vocalRange.high);
+  const rangeScore=Math.max(0,oh-ol)/(base.vocalRange.high-base.vocalRange.low);
+  const leapScore=1-Math.abs(base.leap-cand.leap)/4;
+  const tempoScore=1-Math.min(Math.abs(base.tempo-cand.tempo)/100,1);
+  let score=rangeScore*0.55+leapScore*0.25+tempoScore*0.2;
+  if(filters.lowHighNote&&cand.highNoteFreq>2)score-=0.5;
+  if(filters.genre!=="すべて"&&cand.genre!==filters.genre)score-=0.6;
+  if(filters.leap!==null&&Math.abs(cand.leap-filters.leap)>1)score-=0.4;
+  if(filters.rhythmDiffMax!==null&&cand.rhythmDiff>filters.rhythmDiffMax)score-=0.6;
+  if(filters.tempoBand!=="すべて"&&tempoLabel(cand.tempo).label!==filters.tempoBand)score-=0.5;
+  if(filters.rhythmType!=="すべて"&&cand.rhythmType!==filters.rhythmType)score-=0.5;
+  return score;
+}
+async function fetchItunesInfo(title,artist){
+  try{
+    const q=encodeURIComponent(title+" "+artist);
+    const res=await fetch("https://itunes.apple.com/search?term="+q+"&media=music&limit=1&country=jp");
+    const data=await res.json();
+    if(data.results&&data.results.length>0){
+      const r=data.results[0];
+      return{artwork:r.artworkUrl100?.replace("100x100","300x300"),previewUrl:r.previewUrl};
+    }
+  }catch(e){}
+  return null;
+}
+
+function App(){
+  const [query,setQuery]=React.useState("");
+  const [matched,setMatched]=React.useState(null);
+  const [matchedItunes,setMatchedItunes]=React.useState(null);
+  const [results,setResults]=React.useState([]);
+  const [resultItunes,setResultItunes]=React.useState({});
+  const [filters,setFilters]=React.useState({lowHighNote:false,genre:"すべて",leap:null,rhythmDiffMax:null,tempoBand:"すべて",rhythmType:"すべて"});
+  const [loading,setLoading]=React.useState(false);
+  const [searched,setSearched]=React.useState(false);
+  const [playing,setPlaying]=React.useState(null);
+
+  function computeResults(base,f){
+    return SONG_DB.map(s=>({...s,score:calcSimilarity(base,s,f)})).filter(s=>s.score>0).sort((a,b)=>{const da=calcOverallDiff(a),db=calcOverallDiff(b);if(da!==db)return da-db;return b.score-a.score;}).slice(0,6);
+  }
+
+  async function handleSearch(){
+    const q=query.trim().toLowerCase();
+    if(!q)return;
+    setLoading(true);setSearched(true);setMatched(null);setResults([]);setMatchedItunes(null);setResultItunes({});
+    const found=SONG_DB.find(s=>s.title.toLowerCase().includes(q)||s.artist.toLowerCase().includes(q));
+    if(found){
+      setMatched(found);
+      const itunesData=await fetchItunesInfo(found.title,found.artist);
+      setMatchedItunes(itunesData);
+      const scored=computeResults(found,filters);
+      setResults(scored);
+      const map={};
+      await Promise.all(scored.map(async s=>{const d=await fetchItunesInfo(s.title,s.artist);if(d)map[s.id]=d;}));
+      setResultItunes(map);
+    }
+    setLoading(false);
+  }
+
+  function updateFilter(key,val){
+    const nf={...filters,[key]:val};setFilters(nf);
+    if(matched)setResults(computeResults(matched,nf));
+  }
+
+  function togglePreview(previewUrl,songId){
+    if(playing){playing.pause();setPlaying(null);}
+    if(playing?.songId===songId)return;
+    const audio=new Audio(previewUrl);audio.songId=songId;audio.play();audio.onended=()=>setPlaying(null);setPlaying(audio);
+  }
+
+  function rangePercent(midi){return((midi-40)/50)*100;}
+  const genres=["すべて","J-POP","洋楽","アニソン"];
+  const tempoBands=["すべて","スロー","ミドル","アップ","ハイテンポ"];
+  const rhythmTypes=[{key:"すべて",label:"すべて"},{key:"straight",label:"🟦 4つ打ち"},{key:"offbeat",label:"🟨 裏拍あり"},{key:"complex",label:"🟥 複合"}];
+  const leapLabels=[null,1,2,3,4,5];
+  const leapText={null:"指定なし",1:"とてもなだらか",2:"なだらか",3:"ふつう",4:"激しめ",5:"とても激しい"};
+  const rdLabels=[null,1,2,3,4,5];
+  const rdText={null:"指定なし",1:"やさしい以下",2:"初級以下",3:"中級以下",4:"上級以下",5:"すべて"};
+
+  const S={
+    root:{minHeight:"100vh",background:"linear-gradient(135deg,#0d0d14 0%,#111122 50%,#0d0d1a 100%)",position:"relative",overflow:"hidden"},
+    container:{maxWidth:720,margin:"0 auto",padding:"32px 16px 64px",position:"relative",zIndex:1},
+    header:{textAlign:"center",marginBottom:32},
+    logoRow:{display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:8},
+    logoIcon:{fontSize:32,filter:"drop-shadow(0 0 12px rgba(160,120,255,0.8))"},
+    logo:{fontFamily:"'DM Serif Display',serif",fontSize:40,fontWeight:400,background:"linear-gradient(135deg,#c8a8ff,#80c8ff)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"},
+    tagline:{color:"#8888aa",fontSize:14},
+    searchBox:{display:"flex",alignItems:"center",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:14,padding:"6px 6px 6px 16px",marginBottom:24,boxShadow:"0 4px 24px rgba(0,0,0,0.3)"},
+    input:{flex:1,background:"transparent",border:"none",outline:"none",color:"#e8e8f0",fontSize:15,fontFamily:"'Zen Kaku Gothic New',sans-serif"},
+    searchBtn:{background:"linear-gradient(135deg,#8860e0,#5090d8)",border:"none",borderRadius:10,color:"#fff",padding:"10px 20px",fontSize:14,fontWeight:700,cursor:"pointer"},
+    loadingWrap:{textAlign:"center",padding:"48px 0"},
+    spinner:{width:36,height:36,border:"3px solid rgba(255,255,255,0.1)",borderTop:"3px solid #8860e0",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto"},
+    baseCard:{background:"rgba(120,90,200,0.12)",border:"1px solid rgba(160,120,255,0.25)",borderRadius:16,padding:"20px 20px 14px",marginBottom:16},
+    baseCardInner:{display:"flex",gap:14,marginBottom:16},
+    artwork:{width:80,height:80,borderRadius:10,objectFit:"cover",flexShrink:0,boxShadow:"0 4px 16px rgba(0,0,0,0.4)"},
+    artworkSmall:{width:48,height:48,borderRadius:8,objectFit:"cover",flexShrink:0},
+    baseLabel:{fontSize:11,color:"#8888aa",textTransform:"uppercase",letterSpacing:1,marginBottom:4},
+    baseTitle:{fontSize:22,fontWeight:700,color:"#e0d0ff"},
+    baseArtist:{fontSize:13,color:"#9090b0",marginTop:4},
+    infoBadge:{display:"inline-flex",alignItems:"center",fontSize:12,padding:"4px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",marginRight:6,marginBottom:6},
+    previewBtn:{marginTop:10,background:"rgba(136,96,224,0.2)",border:"1px solid rgba(160,120,255,0.4)",borderRadius:8,color:"#c0a0ff",padding:"6px 14px",fontSize:12,cursor:"pointer"},
+    previewBtnActive:{background:"rgba(224,96,96,0.2)",border:"1px solid rgba(255,120,120,0.4)",color:"#ffb0b0"},
+    rangeInfo:{textAlign:"right",flexShrink:0},
+    rangeLabel:{fontSize:11,color:"#8888aa",textTransform:"uppercase",letterSpacing:1,marginBottom:4},
+    rangeValues:{fontSize:16,fontWeight:700,color:"#c0a0ff"},
+    rangeBar:{position:"relative",height:8,background:"rgba(255,255,255,0.07)",borderRadius:4,marginBottom:4},
+    rangeBarFill:{position:"absolute",height:"100%",borderRadius:4,background:"linear-gradient(90deg,#8860e0,#5090d8)"},
+    rangeTicks:{position:"relative",height:16},
+    filterPanel:{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"16px",marginBottom:20},
+    filterTitle:{fontSize:13,color:"#9090b0",marginBottom:12},
+    filterSectionLabel:{fontSize:12,color:"#7070a0",marginBottom:8},
+    filterRow:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10},
+    chip:{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,padding:"6px 14px",color:"#b0b0c8",fontSize:13,cursor:"pointer"},
+    chipOn:{background:"rgba(136,96,224,0.3)",border:"1px solid rgba(160,120,255,0.5)",color:"#d0b0ff"},
+    chipOnTempo:{background:"rgba(80,160,80,0.25)",border:"1px solid rgba(100,200,100,0.4)",color:"#90e090"},
+    chipOnRhythm:{background:"rgba(200,140,40,0.25)",border:"1px solid rgba(220,170,60,0.4)",color:"#e0c060"},
+    selectRow:{display:"flex",alignItems:"center",gap:10,marginBottom:6},
+    selectLabel:{fontSize:13,color:"#9090b0",whiteSpace:"nowrap"},
+    sel:{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,color:"#d0d0e8",padding:"6px 10px",fontSize:13,outline:"none"},
+    resultsHeader:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12},
+    resultsTitle:{fontSize:15,fontWeight:700,color:"#c0c0d8"},
+    resultCount:{background:"rgba(136,96,224,0.2)",border:"1px solid rgba(160,120,255,0.3)",borderRadius:10,padding:"2px 10px",fontSize:12,color:"#b090e0"},
+    resultGrid:{display:"flex",flexDirection:"column",gap:10},
+    resultCard:{display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"14px 16px",animation:"fadeUp 0.4s ease both"},
+    resultRank:{fontSize:18,fontWeight:700,color:"rgba(160,120,255,0.4)",minWidth:28,textAlign:"center"},
+    resultMain:{flex:1,minWidth:0},
+    resultTitle:{fontSize:15,fontWeight:700,color:"#e0e0f0",marginBottom:2},
+    resultArtist:{fontSize:12,color:"#7878a0",marginBottom:6},
+    resultTags:{display:"flex",flexWrap:"wrap",gap:4},
+    tag:{background:"rgba(255,255,255,0.06)",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#8888a8"},
+    miniBarWrap:{minWidth:100,flexShrink:0},
+    miniBar:{position:"relative",height:6,background:"rgba(255,255,255,0.06)",borderRadius:3,marginBottom:4},
+    miniBarBase:{position:"absolute",height:"100%",borderRadius:3,background:"rgba(136,96,224,0.25)"},
+    miniBarFill:{position:"absolute",height:"100%",borderRadius:3,background:"linear-gradient(90deg,#60c0d0,#80c060)",opacity:0.8},
+    miniBarLabel:{fontSize:10,color:"#7070a0",textAlign:"right",marginBottom:4},
+    scoreBar:{height:3,background:"rgba(255,255,255,0.05)",borderRadius:2,overflow:"hidden",marginBottom:2},
+    scoreBarFill:{height:"100%",borderRadius:2,background:"linear-gradient(90deg,#8860e0,#5090d8)",transition:"width 0.6s ease"},
+    scoreLabel:{fontSize:10,color:"#8860e0",textAlign:"right"},
+    notFound:{textAlign:"center",padding:"40px 20px",color:"#a0a0b0"},
+    hint:{textAlign:"center",marginTop:16},
+    hintChips:{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:8,marginTop:10},
+    hintChip:{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,padding:"8px 16px",color:"#a0a0c0",fontSize:13,cursor:"pointer"},
+  };
+
+  return (
+    <div style={S.root}>
+      <div style={{position:"fixed",top:"-20%",right:"-10%",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(120,80,220,0.15) 0%,transparent 70%)",pointerEvents:"none"}}/>
+      <div style={{position:"fixed",bottom:"-15%",left:"-10%",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle,rgba(60,180,220,0.1) 0%,transparent 70%)",pointerEvents:"none"}}/>
+      <div style={S.container}>
+        <header style={S.header}>
+          <div style={S.logoRow}><span style={S.logoIcon}>♪</span><h1 style={S.logo}>VoiceMatch</h1></div>
+          <p style={S.tagline}>あなたの声域・リズム感に合う曲を見つけよう</p>
+        </header>
+        <div style={S.searchBox}>
+          <span style={{fontSize:16,marginRight:8,opacity:0.5}}>🔍</span>
+          <input style={S.input} placeholder="曲名 or アーティスト名を入力..." value={query}
+            onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSearch()}/>
+          <button style={S.searchBtn} onClick={handleSearch}>検索</button>
+        </div>
+        {loading&&<div style={S.loadingWrap}><div style={S.spinner}/><p style={{color:"#9090b0",fontSize:13,marginTop:12}}>曲情報を取得中...</p></div>}
+        {!loading&&searched&&(
+          <div>
+            {!matched?(
+              <div style={S.notFound}><span style={{fontSize:32}}>😅</span><p style={{marginTop:8,color:"#a0a0b0"}}>その曲はDBにありません。<br/>他の曲名を試してください。</p></div>
+            ):(<>
+              <div style={S.baseCard}>
+                <div style={S.baseCardInner}>
+                  {matchedItunes?.artwork&&<img src={matchedItunes.artwork} alt="artwork" style={S.artwork}/>}
+                  <div style={{flex:1}}>
+                    <div style={S.baseLabel}>入力した曲</div>
+                    <div style={S.baseTitle}>{matched.title}</div>
+                    <div style={S.baseArtist}>{matched.artist} · {matched.genre}</div>
+                    <div style={{display:"flex",flexWrap:"wrap",marginTop:10}}>
+                      <span style={S.infoBadge}>🥁 {matched.tempo} BPM <span style={{color:tempoLabel(matched.tempo).color,fontWeight:700,marginLeft:4}}>{tempoLabel(matched.tempo).label}</span></span>
+                      <span style={S.infoBadge}>{RHYTHM_LABEL[matched.rhythmType].icon} {RHYTHM_LABEL[matched.rhythmType].label}</span>
+                      <span style={{...S.infoBadge,color:diffColor(matched.rhythmDiff)}}>リズム難易度 {diffLabel(matched.rhythmDiff)}</span>
+                      <span style={{...S.infoBadge,color:diffColor(calcOverallDiff(matched)),fontWeight:700}}>総合 {diffLabel(calcOverallDiff(matched))}</span>
+                    </div>
+                    {matchedItunes?.previewUrl&&<button style={{...S.previewBtn,...(playing?.songId==="base"?S.previewBtnActive:{})}} onClick={()=>togglePreview(matchedItunes.previewUrl,"base")}>{playing?.songId==="base"?"⏹ 停止":"▶ 試聴 (30秒)"}</button>}
+                  </div>
+                  <div style={S.rangeInfo}>
+                    <div style={S.rangeLabel}>音域</div>
+                    <div style={S.rangeValues}>{midiToNote(matched.vocalRange.low)}<span style={{color:"#8888aa",margin:"0 4px"}}>〜</span>{midiToNote(matched.vocalRange.high)}</div>
+                  </div>
+                </div>
+                <div style={S.rangeBar}><div style={{...S.rangeBarFill,left:rangePercent(matched.vocalRange.low)+"%",width:(rangePercent(matched.vocalRange.high)-rangePercent(matched.vocalRange.low))+"%"}}/></div>
+                <div style={S.rangeTicks}>{["C2","C3","C4","C5","C6"].map((n,i)=><span key={n} style={{left:(i/4*100)+"%",position:"absolute",fontSize:10,color:"#606070",transform:"translateX(-50%)"}}>{n}</span>)}</div>
+              </div>
+              <div style={S.filterPanel}>
+                <div style={S.filterTitle}>🎛️ 絞り込みフィルター</div>
+                <div style={S.filterSectionLabel}>🎵 音域</div>
+                <div style={S.filterRow}>
+                  <button style={{...S.chip,...(filters.lowHighNote?S.chipOn:{})}} onClick={()=>updateFilter("lowHighNote",!filters.lowHighNote)}>高音が少ない</button>
+                  {genres.map(g=><button key={g} style={{...S.chip,...(filters.genre===g?S.chipOn:{})}} onClick={()=>updateFilter("genre",g)}>{g}</button>)}
+                </div>
+                <div style={S.selectRow}><span style={S.selectLabel}>跳躍度</span><select style={S.sel} value={String(filters.leap)} onChange={e=>updateFilter("leap",e.target.value==="null"?null:Number(e.target.value))}>{leapLabels.map(l=><option key={String(l)} value={String(l)}>{leapText[l]}</option>)}</select></div>
+                <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",paddingTop:14,marginTop:14}}>
+                  <div style={S.filterSectionLabel}>🥁 リズム・テンポ</div>
+                  <div style={{...S.filterRow,marginBottom:8}}>{tempoBands.map(tb=><button key={tb} style={{...S.chip,...(filters.tempoBand===tb?S.chipOnTempo:{})}} onClick={()=>updateFilter("tempoBand",tb)}>{tb}</button>)}</div>
+                  <div style={{...S.filterRow,marginBottom:8}}>{rhythmTypes.map(rt=><button key={rt.key} style={{...S.chip,...(filters.rhythmType===rt.key?S.chipOnRhythm:{})}} onClick={()=>updateFilter("rhythmType",rt.key)}>{rt.label}</button>)}</div>
+                  <div style={S.selectRow}><span style={S.selectLabel}>リズム難易度（上限）</span><select style={S.sel} value={String(filters.rhythmDiffMax)} onChange={e=>updateFilter("rhythmDiffMax",e.target.value==="null"?null:Number(e.target.value))}>{rdLabels.map(l=><option key={String(l)} value={String(l)}>{rdText[l]}</option>)}</select></div>
+                </div>
+              </div>
+              <div style={S.resultsHeader}><span style={S.resultsTitle}>🎤 歌いやすい順に表示</span><span style={S.resultCount}>{results.length}件</span></div>
+              {results.length===0?<div style={S.notFound}><p style={{color:"#a0a0b0"}}>条件に合う曲が見つかりませんでした。</p></div>:(
+                <div style={S.resultGrid}>
+                  {results.map((song,i)=>{
+                    const tl=tempoLabel(song.tempo),od=calcOverallDiff(song),itunes=resultItunes[song.id];
+                    return(
+                    <div key={song.id} style={{...S.resultCard,animationDelay:`${i*0.07}s`}}>
+                      {itunes?.artwork&&<img src={itunes.artwork} alt="" style={S.artworkSmall}/>}
+                      <div style={S.resultRank}>#{i+1}</div>
+                      <div style={S.resultMain}>
+                        <div style={S.resultTitle}>{song.title}</div>
+                        <div style={S.resultArtist}>{song.artist}</div>
+                        <div style={S.resultTags}><span style={S.tag}>{song.genre}</span><span style={S.tag}>跳躍 {"★".repeat(song.leap)}{"☆".repeat(5-song.leap)}</span><span style={S.tag}>高音 {"★".repeat(song.highNoteFreq)}{"☆".repeat(5-song.highNoteFreq)}</span></div>
+                        <div style={{...S.resultTags,marginTop:4}}><span style={{...S.tag,color:tl.color}}>🥁 {song.tempo}BPM · {tl.label}</span><span style={S.tag}>{RHYTHM_LABEL[song.rhythmType].icon} {RHYTHM_LABEL[song.rhythmType].label}</span><span style={{...S.tag,color:diffColor(song.rhythmDiff)}}>リズム {diffLabel(song.rhythmDiff)}</span></div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}><span style={{fontSize:10,color:"#707080",whiteSpace:"nowrap"}}>総合難易度</span><div style={{flex:1,height:4,background:"rgba(255,255,255,0.06)",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:(od/5*100)+"%",background:diffColor(od),borderRadius:2}}/></div><span style={{fontSize:10,color:diffColor(od),whiteSpace:"nowrap"}}>{diffLabel(od)}</span></div>
+                        {itunes?.previewUrl&&<button style={{...S.previewBtn,...(playing?.songId===song.id?S.previewBtnActive:{})}} onClick={()=>togglePreview(itunes.previewUrl,song.id)}>{playing?.songId===song.id?"⏹ 停止":"▶ 試聴"}</button>}
+                      </div>
+                      <div style={S.miniBarWrap}>
+                        <div style={S.miniBar}><div style={{...S.miniBarBase,left:rangePercent(matched.vocalRange.low)+"%",width:(rangePercent(matched.vocalRange.high)-rangePercent(matched.vocalRange.low))+"%"}}/><div style={{...S.miniBarFill,left:rangePercent(song.vocalRange.low)+"%",width:(rangePercent(song.vocalRange.high)-rangePercent(song.vocalRange.low))+"%"}}/></div>
+                        <div style={S.miniBarLabel}>{midiToNote(song.vocalRange.low)}〜{midiToNote(song.vocalRange.high)}</div>
+                        <div style={S.scoreBar}><div style={{...S.scoreBarFill,width:Math.round(song.score*100)+"%"}}/></div>
+                        <div style={S.scoreLabel}>一致度 {Math.round(song.score*100)}%</div>
+                      </div>
+                    </div>
+                  );})}
+                </div>
+              )}
+            </>)}
+          </div>
+        )}
+        {!searched&&(
+          <div style={S.hint}>
+            <p style={{color:"#606070",fontSize:13}}>💡 試してみよう</p>
+            <div style={S.hintChips}>
+              {["ドライフラワー","夜に駆ける","Lemon","Shape of You","糸","うっせぇわ"].map(t=>(
+                <button key={t} style={S.hintChip} onClick={()=>{setQuery(t);setTimeout(handleSearch,0);}}>{t}</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
