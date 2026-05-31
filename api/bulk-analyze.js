@@ -1,4 +1,4 @@
-export const maxDuration = 30; // タイムアウトを30秒に延長
+export const maxDuration = 30;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,19 +7,21 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
- 
+
   const { artist } = req.body;
   if (!artist) return res.status(400).json({ error: 'artist is required' });
 
-  const prompt = `あなたは音楽の専門家です。「${artist}」が実際にリリースした代表曲・人気曲を15曲リストアップして、各曲の歌唱データをJSON配列で返してください。
+  const prompt = `「${artist}」が実際にリリースした代表曲・人気曲を15曲調べてリストアップしてください。
+
+まずウェブ検索で「${artist} 代表曲 人気曲」を検索して、正確な曲名を確認してください。
 
 【重要なルール】
 - 「${artist}」が実際にリリースした曲のみを返してください
 - 他のアーティストの曲は絶対に含めないでください
-- 曲名とアーティスト名が正確に一致することを確認してください
+- ウェブ検索で確認した正確な曲名のみ使用してください
 - 不確かな曲は含めないでください
 
-以下のJSON配列形式のみで返してください（説明文・コードブロック不要）：
+確認できた曲について、以下のJSON配列形式のみで返してください（説明文・コードブロック不要）：
 [
   {
     "title": "曲名",
@@ -34,8 +36,7 @@ export default async function handler(req, res) {
   }
 ]
 
-MIDIノート番号の目安：C3=48, E3=52, G3=55, C4=60, E4=64, G4=67, C5=72, E5=76
-必ず15曲返してください。`;
+MIDIノート番号の目安：C3=48, E3=52, G3=55, C4=60, E4=64, G4=67, C5=72, E5=76`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -48,18 +49,34 @@ MIDIノート番号の目安：C3=48, E3=52, G3=55, C4=60, E4=64, G4=67, C5=72, 
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 3000,
+        tools: [
+          {
+            type: "web_search_20250305",
+            name: "web_search"
+          }
+        ],
         messages: [{ role: 'user', content: prompt }],
       }),
     });
- 
-    const data = await response.json();
-    const text = data.content?.map(c => c.text || '').join('');
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
 
+    const data = await response.json();
+    
+    // テキストブロックを全部結合
+    const text = data.content
+      ?.filter(c => c.type === 'text')
+      ?.map(c => c.text || '')
+      ?.join('') || '';
+    
+    const clean = text.replace(/```json|```/g, '').trim();
+    
+    // JSONの配列部分を抽出
+    const jsonMatch = clean.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('JSON not found');
+    
+    const parsed = JSON.parse(jsonMatch[0]);
     return res.status(200).json({ songs: parsed });
   } catch (e) {
     console.error('Bulk API error:', e);
-    return res.status(500).json({ error: '一括分析に失敗しました' });
+    return res.status(500).json({ error: '一括分析に失敗しました。もう一度試してください。' });
   }
 }
