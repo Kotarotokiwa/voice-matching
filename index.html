@@ -4664,11 +4664,12 @@ function toZenkakuKana(str){return str.replace(/[ｦ-ﾟ]/g,ch=>HANKAKU_MAP[ch]|
 function normalize(str){
   if(!str)return "";
   let s=str.toLowerCase();
-  s=toHalfWidth(s);      // 全角英数→半角
-  s=toZenkakuKana(s);    // 半角カナ→全角カナ
-  s=toHiragana(s);       // カタカナ→ひらがな（統一）
-  s=s.replace(/\s+/g,""); // スペース除去
-  s=s.replace(/[・\-\_]/g,""); // 区切り文字除去
+  s=toHalfWidth(s);
+  s=toZenkakuKana(s);
+  s=toHiragana(s);
+  s=s.replace(/ /g,"").replace(/　/g,"");
+  s=s.replace(/・/g,"").replace(/-/g,"").replace(/_/g,"");
+  s=s.replace(/ー/g,"").replace(/〜/g,"");
   return s;
 }
 
