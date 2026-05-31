@@ -12407,12 +12407,18 @@ function App(){
               <input style={S.modalInput} placeholder="アーティスト名（例：YOASOBI、back number）" value={bulkArtist} onChange={e=>setBulkArtist(e.target.value)}/>
               {addError&&<p style={{color:"#e06060",fontSize:13,marginBottom:8}}>{addError}</p>}
               {bulkResults.length>0&&(
-                <div style={{...S.previewBox,maxHeight:200,overflowY:"auto"}}>
-                  <div style={S.previewBoxTitle}>AIの分析結果 — {bulkResults.length}曲</div>
+                <div style={{...S.previewBox,maxHeight:240,overflowY:"auto"}}>
+                  <div style={S.previewBoxTitle}>AIの分析結果 — {bulkResults.length}曲（✕で除外できます）</div>
                   {bulkResults.map((s,i)=>(
-                    <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                      <span style={{fontSize:13,color:"#e0e0f0"}}>{s.title}</span>
-                      <span style={{fontSize:11,color:"#7070a0"}}>{s.tempo}BPM · {diffLabel(calcOverallDiff(s))}</span>
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                      <div style={{flex:1}}>
+                        <span style={{fontSize:13,color:"#e0e0f0"}}>{s.title}</span>
+                        <span style={{fontSize:11,color:"#7070a0",marginLeft:8}}>{s.tempo}BPM · {diffLabel(calcOverallDiff(s))}</span>
+                      </div>
+                      <button onClick={()=>setBulkResults(prev=>prev.filter((_,idx)=>idx!==i))}
+                        style={{background:"none",border:"none",color:"#e06060",fontSize:16,cursor:"pointer",padding:"0 4px",flexShrink:0}}>
+                        ✕
+                      </button>
                     </div>
                   ))}
                 </div>
