@@ -12355,26 +12355,26 @@ function App(){
 
       {/* ✨ AIで曲を追加モーダル */}
       {showAdd&&(
-        <div style={S.modalOverlay} onClick={e=>e.target===e.currentTarget&&(setShowAdd(false),setAddMode("single"),setBulkResults([]),)}>
-          <div style={{...S.modal,maxHeight:"85vh",overflowY:"auto"}} className="vm-modal">
+        <div style={S.modalOverlay} onClick={e=>e.target===e.currentTarget&&setShowAdd(false)}>
+          <div style={S.modal} className="vm-modal">
             <div style={S.modalTitle} className="vm-modal-title">✨ AIで曲を追加</div>
 
             {/* タブ */}
             <div style={{display:"flex",gap:8,marginBottom:16}}>
-              <button style={{...S.modalBtn,flex:1,padding:"8px",...(addMode==="single"?S.modalBtnPrimary:{background:"rgba(255,255,255,0.08)",color:"#a0a0c0"})}}
-                onClick={()=>{setAddMode("single");setBulkResults([]);}}>
-                🎵 1曲追加
+              <button onClick={()=>{setAddMode("single");setAddResult(null);setBulkResults([]);setAddError("");}}
+                style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",fontSize:13,background:addMode==="single"?"rgba(136,96,224,0.3)":"rgba(255,255,255,0.05)",color:addMode==="single"?"#d0b0ff":"#9090b0",fontWeight:addMode==="single"?700:400}}>
+                1曲ずつ追加
               </button>
-              <button style={{...S.modalBtn,flex:1,padding:"8px",...(addMode==="bulk"?{background:"linear-gradient(135deg,#40c060,#30a050)",color:"#fff"}:{background:"rgba(255,255,255,0.08)",color:"#a0a0c0"})}}
-                onClick={()=>{setAddMode("bulk");setAddResult(null);}}>
-                🎤 アーティスト一括
+              <button onClick={()=>{setAddMode("bulk");setAddResult(null);setBulkResults([]);setAddError("");}}
+                style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",fontSize:13,background:addMode==="bulk"?"rgba(136,96,224,0.3)":"rgba(255,255,255,0.05)",color:addMode==="bulk"?"#d0b0ff":"#9090b0",fontWeight:addMode==="bulk"?700:400}}>
+                🎤 アーティスト一括追加
               </button>
             </div>
 
-            {/* 1曲追加モード */}
+            {/* 1曲ずつ */}
             {addMode==="single"&&(<>
-              <div style={S.modalDesc}>曲名を入力するとAIが自動で音域・リズム・難易度を分析します</div>
-              <input style={S.modalInput} placeholder="曲名（例：夜明け前、KICK BACK）" value={addTitle} onChange={e=>setAddTitle(e.target.value)}/>
+              <div style={S.modalDesc}>曲名を入力するとAIが自動で音域・リズム・難易度を分析します！</div>
+              <input style={S.modalInput} placeholder="曲名（例：夜明け前）" value={addTitle} onChange={e=>setAddTitle(e.target.value)}/>
               <input style={S.modalInput} placeholder="アーティスト名（任意）" value={addArtist} onChange={e=>setAddArtist(e.target.value)}/>
               {addError&&<p style={{color:"#e06060",fontSize:13,marginBottom:8}}>{addError}</p>}
               {addResult&&(
@@ -12394,8 +12394,7 @@ function App(){
               <div style={S.modalBtnRow}>
                 <button style={{...S.modalBtn,...S.modalBtnSecondary}} onClick={()=>setShowAdd(false)}>キャンセル</button>
                 {!addResult?(
-                  <button style={{...S.modalBtn,...S.modalBtnPrimary,...(addLoading?{opacity:0.6}:{})}}
-                    onClick={handleAddSong} disabled={addLoading}>
+                  <button style={{...S.modalBtn,...S.modalBtnPrimary,...(addLoading?{opacity:0.6}:{})}} onClick={handleAddSong} disabled={addLoading}>
                     {addLoading?"分析中...":"🤖 AIで分析"}
                   </button>
                 ):(
@@ -12406,49 +12405,31 @@ function App(){
               </div>
             </>)}
 
-            {/* アーティスト一括追加モード */}
+            {/* アーティスト一括追加 */}
             {addMode==="bulk"&&(<>
-              <div style={S.modalDesc}>アーティスト名を入力するとAIが代表曲を20曲自動生成してまとめて追加します！</div>
-              <input style={S.modalInput} placeholder="アーティスト名（例：YOASOBI、back number）"
-                value={bulkArtist} onChange={e=>setBulkArtist(e.target.value)}/>
-              {bulkError&&<p style={{color:"#e06060",fontSize:13,marginBottom:8}}>{bulkError}</p>}
-
-              {/* 一括追加完了メッセージ */}
-              {false&&(
-                <div style={{background:"rgba(64,192,96,0.15)",border:"1px solid rgba(64,192,96,0.3)",borderRadius:10,padding:"10px 14px",marginBottom:10,color:"#60d090",fontSize:13}}>
-                  ✅ 0曲をDBに追加しました！
-                </div>
-              )}
-
-              {/* 生成された曲リスト */}
+              <div style={S.modalDesc}>アーティスト名を入力するとAIが代表曲〜20曲を一括分析してDBに追加します！</div>
+              <input style={S.modalInput} placeholder="アーティスト名（例：YOASOBI、back number）" value={bulkArtist} onChange={e=>setBulkArtist(e.target.value)}/>
+              {addError&&<p style={{color:"#e06060",fontSize:13,marginBottom:8}}>{addError}</p>}
               {bulkResults.length>0&&(
-                <div style={S.previewBox}>
-                  <div style={S.previewBoxTitle}>AIが生成した曲一覧（{bulkResults.length}曲）</div>
-                  <div style={{maxHeight:200,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
-                    {bulkResults.map((s,i)=>(
-                      <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 8px",background:"rgba(255,255,255,0.04)",borderRadius:8}}>
-                        <div>
-                          <span style={{fontSize:13,color:"#e0e0f0",fontWeight:700}}>{s.title}</span>
-                          <span style={{fontSize:11,color:"#7070a0",marginLeft:8}}>{s.tempo}BPM · {diffLabel(calcOverallDiff(s))}</span>
-                        </div>
-                        <span style={{fontSize:11,color:"#6060a0"}}>{midiToNote(s.vocalRange.low)}〜{midiToNote(s.vocalRange.high)}</span>
-                      </div>
-                    ))}
-                  </div>
+                <div style={{...S.previewBox,maxHeight:200,overflowY:"auto"}}>
+                  <div style={S.previewBoxTitle}>AIの分析結果 — {bulkResults.length}曲</div>
+                  {bulkResults.map((s,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                      <span style={{fontSize:13,color:"#e0e0f0"}}>{s.title}</span>
+                      <span style={{fontSize:11,color:"#7070a0"}}>{s.tempo}BPM · {diffLabel(calcOverallDiff(s))}</span>
+                    </div>
+                  ))}
                 </div>
               )}
-
               <div style={S.modalBtnRow}>
-                <button style={{...S.modalBtn,...S.modalBtnSecondary}} onClick={()=>setShowAdd(false)}>閉じる</button>
+                <button style={{...S.modalBtn,...S.modalBtnSecondary}} onClick={()=>setShowAdd(false)}>キャンセル</button>
                 {bulkResults.length===0?(
-                  <button style={{...S.modalBtn,...{background:"linear-gradient(135deg,#40c060,#30a050)",color:"#fff"},...(addLoading?{opacity:0.6}:{})}}
-                    onClick={handleBulkAdd} disabled={addLoading}>
-                    {addLoading?"生成中...（少し待ってね）":"🤖 代表曲を生成"}
+                  <button style={{...S.modalBtn,...S.modalBtnPrimary,...(addLoading?{opacity:0.6}:{})}} onClick={handleBulkAnalyze} disabled={addLoading}>
+                    {addLoading?"分析中...":"🤖 一括分析する"}
                   </button>
                 ):(
-                  <button style={{...S.modalBtn,...S.modalBtnConfirm,...(addLoading?{opacity:0.6}:{})}}
-                    onClick={confirmBulkAdd} disabled={addLoading}>
-                    {addLoading?"追加中...":` ✅ ${bulkResults.length}曲をまとめて追加`}
+                  <button style={{...S.modalBtn,...S.modalBtnConfirm}} onClick={confirmBulkAdd}>
+                    ✅ {bulkResults.length}曲をDBに追加する
                   </button>
                 )}
               </div>
