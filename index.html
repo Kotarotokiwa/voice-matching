@@ -11832,7 +11832,7 @@ function App(){
   const [addMode,setAddMode]=React.useState("single"); // single or bulk
   const [bulkArtist,setBulkArtist]=React.useState("");
   const [bulkResults,setBulkResults]=React.useState([]);
-  const [bulkError,setBulkError]=React.useState("");
+  
   // 起動時にSupabaseから追加曲を取得
   React.useEffect(() => {
     (async () => {
@@ -11964,7 +11964,7 @@ function App(){
   // アーティスト名で代表曲を一括取得
   async function handleBulkAdd(){
     if(!bulkArtist.trim())return;
-    setAddLoading(true);setBulkError("");setBulkResults([]);
+    setAddLoading(true);setAddError("");setBulkResults([]);
     try{
       const res=await fetch("/api/analyze",{
         method:"POST",
@@ -11976,10 +11976,10 @@ function App(){
       if(data.songs&&data.songs.length>0){
         setBulkResults(data.songs);
       } else {
-        setBulkError("曲が見つかりませんでした。アーティスト名を確認してください。");
+        setAddError("曲が見つかりませんでした。アーティスト名を確認してください。");
       }
     }catch(e){
-      setBulkError("AIの取得に失敗しました。もう一度試してください。");
+      setAddError("AIの取得に失敗しました。もう一度試してください。");
     }
     setAddLoading(false);
   }
