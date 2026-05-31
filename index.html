@@ -11834,7 +11834,7 @@ function App(){
   const [bulkResults,setBulkResults]=React.useState([]);
   const [addMode,setAddMode]=React.useState("single"); // "single" or "bulk"
   const [bulkArtist,setBulkArtist]=React.useState("");
-  const [bulkLoading,setBulkLoading]=React.useState(false);
+  const [addLoading,setBulkLoading]=React.useState(false);
   const [bulkResults,setBulkResults]=React.useState([]);
   const [bulkError,setBulkError]=React.useState("");
   const [bulkAdded,setBulkAdded]=React.useState(0);
@@ -11970,7 +11970,7 @@ function App(){
   // アーティスト名で代表曲を一括取得
   async function handleBulkAdd(){
     if(!bulkArtist.trim())return;
-    setBulkLoading(true);setBulkError("");setBulkResults([]);setBulkAdded(0);
+    setAddLoading(true);setBulkError("");setBulkResults([]);setBulkAdded(0);
     try{
       const res=await fetch("/api/analyze",{
         method:"POST",
@@ -11987,13 +11987,13 @@ function App(){
     }catch(e){
       setBulkError("AIの取得に失敗しました。もう一度試してください。");
     }
-    setBulkLoading(false);
+    setAddLoading(false);
   }
 
   // 一括追加を確定
   async function confirmBulkAdd(){
     if(bulkResults.length===0)return;
-    setBulkLoading(true);
+    setAddLoading(true);
     let addedCount=0;
     const newDB=[...songDB];
     let nextId=Math.max(...songDB.map(s=>s.id))+1;
@@ -12011,7 +12011,7 @@ function App(){
     saveSongDB(newDB);
     setExtraCount(prev=>prev+addedCount);
     setBulkAdded(addedCount);
-    setBulkLoading(false);
+    setAddLoading(false);
   }
 
   // アーティスト一括分析
@@ -12444,14 +12444,14 @@ function App(){
               <div style={S.modalBtnRow}>
                 <button style={{...S.modalBtn,...S.modalBtnSecondary}} onClick={()=>setShowAdd(false)}>閉じる</button>
                 {bulkResults.length===0?(
-                  <button style={{...S.modalBtn,...{background:"linear-gradient(135deg,#40c060,#30a050)",color:"#fff"},...(bulkLoading?{opacity:0.6}:{})}}
-                    onClick={handleBulkAdd} disabled={bulkLoading}>
-                    {bulkLoading?"生成中...（少し待ってね）":"🤖 代表曲を生成"}
+                  <button style={{...S.modalBtn,...{background:"linear-gradient(135deg,#40c060,#30a050)",color:"#fff"},...(addLoading?{opacity:0.6}:{})}}
+                    onClick={handleBulkAdd} disabled={addLoading}>
+                    {addLoading?"生成中...（少し待ってね）":"🤖 代表曲を生成"}
                   </button>
                 ):(
-                  <button style={{...S.modalBtn,...S.modalBtnConfirm,...(bulkLoading?{opacity:0.6}:{})}}
-                    onClick={confirmBulkAdd} disabled={bulkLoading}>
-                    {bulkLoading?"追加中...":` ✅ ${bulkResults.length}曲をまとめて追加`}
+                  <button style={{...S.modalBtn,...S.modalBtnConfirm,...(addLoading?{opacity:0.6}:{})}}
+                    onClick={confirmBulkAdd} disabled={addLoading}>
+                    {addLoading?"追加中...":` ✅ ${bulkResults.length}曲をまとめて追加`}
                   </button>
                 )}
               </div>
