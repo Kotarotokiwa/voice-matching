@@ -11837,8 +11837,6 @@ function App(){
   const [addLoading,setBulkLoading]=React.useState(false);
   const [bulkResults,setBulkResults]=React.useState([]);
   const [bulkError,setBulkError]=React.useState("");
-  const [bulkAdded,setBulkAdded]=React.useState(0);
-
   // 起動時にSupabaseから追加曲を取得
   React.useEffect(() => {
     (async () => {
@@ -11970,7 +11968,7 @@ function App(){
   // アーティスト名で代表曲を一括取得
   async function handleBulkAdd(){
     if(!bulkArtist.trim())return;
-    setAddLoading(true);setBulkError("");setBulkResults([]);setBulkAdded(0);
+    setAddLoading(true);setBulkError("");setBulkResults([]);
     try{
       const res=await fetch("/api/analyze",{
         method:"POST",
@@ -12010,7 +12008,6 @@ function App(){
     setSongDB(newDB);
     saveSongDB(newDB);
     setExtraCount(prev=>prev+addedCount);
-    setBulkAdded(addedCount);
     setAddLoading(false);
   }
 
@@ -12358,14 +12355,14 @@ function App(){
 
       {/* ✨ AIで曲を追加モーダル */}
       {showAdd&&(
-        <div style={S.modalOverlay} onClick={e=>e.target===e.currentTarget&&(setShowAdd(false),setAddMode("single"),setBulkResults([]),setBulkAdded(0))}>
+        <div style={S.modalOverlay} onClick={e=>e.target===e.currentTarget&&(setShowAdd(false),setAddMode("single"),setBulkResults([]),)}>
           <div style={{...S.modal,maxHeight:"85vh",overflowY:"auto"}} className="vm-modal">
             <div style={S.modalTitle} className="vm-modal-title">✨ AIで曲を追加</div>
 
             {/* タブ */}
             <div style={{display:"flex",gap:8,marginBottom:16}}>
               <button style={{...S.modalBtn,flex:1,padding:"8px",...(addMode==="single"?S.modalBtnPrimary:{background:"rgba(255,255,255,0.08)",color:"#a0a0c0"})}}
-                onClick={()=>{setAddMode("single");setBulkResults([]);setBulkAdded(0);}}>
+                onClick={()=>{setAddMode("single");setBulkResults([]);}}>
                 🎵 1曲追加
               </button>
               <button style={{...S.modalBtn,flex:1,padding:"8px",...(addMode==="bulk"?{background:"linear-gradient(135deg,#40c060,#30a050)",color:"#fff"}:{background:"rgba(255,255,255,0.08)",color:"#a0a0c0"})}}
@@ -12417,9 +12414,9 @@ function App(){
               {bulkError&&<p style={{color:"#e06060",fontSize:13,marginBottom:8}}>{bulkError}</p>}
 
               {/* 一括追加完了メッセージ */}
-              {bulkAdded>0&&(
+              {false&&(
                 <div style={{background:"rgba(64,192,96,0.15)",border:"1px solid rgba(64,192,96,0.3)",borderRadius:10,padding:"10px 14px",marginBottom:10,color:"#60d090",fontSize:13}}>
-                  ✅ {bulkAdded}曲をDBに追加しました！
+                  ✅ 0曲をDBに追加しました！
                 </div>
               )}
 
