@@ -51,7 +51,7 @@ MIDIノート番号の目安：C3=48, E3=52, G3=55, C4=60, E4=64, G4=67, C5=72, 
         messages: [{ role: 'user', content: prompt }],
       }),
     });
-
+ 
     const data = await response.json();
     const text = data.content?.map(c => c.text || '').join('');
     const clean = text.replace(/```json|```/g, '').trim();
