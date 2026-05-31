@@ -4679,41 +4679,15 @@ async function fetchItunesInfo(title,artist){
   return null;
 }
 
-// ── AI（Claude）で曲データを自動生成 ──────────────────
+// ── AI（Claude）で曲データを自動生成（Vercel経由）──────────────────
 async function fetchSongDataFromAI(title, artist) {
-  const prompt = `あなたは音楽の専門家です。以下の曲について、歌唱データをJSON形式で返してください。
-
-曲名：${title}
-アーティスト：${artist || "不明"}
-
-以下のJSON形式のみで返してください（説明文は不要）：
-{
-  "title": "曲名",
-  "artist": "アーティスト名",
-  "genre": "J-POP または 洋楽 または アニソン または その他",
-  "vocalRange": {"low": MIDIノート番号(40-60), "high": MIDIノート番号(60-85)},
-  "leap": メロディ跳躍度(1-5の整数),
-  "highNoteFreq": 高音出現頻度(1-5の整数),
-  "tempo": BPM(整数),
-  "rhythmType": "straight または offbeat または complex",
-  "rhythmDiff": リズム難易度(1-5の整数)
-}
-
-MIDIノート番号の目安：C3=48, E3=52, G3=55, C4=60, E4=64, G4=67, C5=72, E5=76`;
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/analyze", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{role: "user", content: prompt}]
-    })
+    body: JSON.stringify({ title, artist })
   });
-  const data = await res.json();
-  const text = data.content?.map(c=>c.text||"").join("");
-  const clean = text.replace(/```json|```/g,"").trim();
-  return JSON.parse(clean);
+  if (!res.ok) throw new Error("API error");
+  return await res.json();
 }
 
 function App(){
@@ -4740,7 +4714,11 @@ function App(){
       setDbLoading(false);
     })();
   }, []);
-  const [query,setQuery]=React.useState("");
+  const [artistQuery,setArtistQuery]=React.useState("");
+  const [titleQuery,setTitleQuery]=React.useState("");
+  const [artistCandidates,setArtistCandidates]=React.useState([]);
+  const [titleCandidates,setTitleCandidates]=React.useState([]);
+  const [artistSongs,setArtistSongs]=React.useState([]);
   const [matched,setMatched]=React.useState(null);
   const [matchedItunes,setMatchedItunes]=React.useState(null);
   const [results,setResults]=React.useState([]);
@@ -4762,11 +4740,74 @@ function App(){
     return d.map(s=>({...s,score:calcSimilarity(base,s,f)})).filter(s=>s.score>0).sort((a,b)=>{const da=calcOverallDiff(a),db=calcOverallDiff(b);if(da!==db)return da-db;return b.score-a.score;}).slice(0,6);
   }
 
+  // あいまい検索：アーティスト候補
+  function handleArtistSuggest(val){
+    if(!val.trim()){setArtistCandidates([]);return;}
+    const q=val.trim().toLowerCase();
+    const artists=[...new Set(songDB.map(s=>s.artist))];
+    const matched=artists.filter(a=>a.toLowerCase().includes(q)).slice(0,6);
+    setArtistCandidates(matched);
+  }
+
+  // あいまい検索：曲名候補
+  function handleTitleSuggest(val){
+    if(!val.trim()){setTitleCandidates([]);return;}
+    const q=val.trim().toLowerCase();
+    const matched=songDB.filter(s=>s.title.toLowerCase().includes(q)).slice(0,8);
+    setTitleCandidates(matched);
+  }
+
+  // アーティスト選択 → そのアーティストの曲一覧表示
+  function handleArtistSelect(artist){
+    const songs=songDB.filter(s=>s.artist===artist);
+    setArtistSongs(songs);
+    setTitleCandidates([]);
+    setMatched(null);
+    setResults([]);
+    setSearched(false);
+  }
+
+  // 曲を直接選択
+  async function handleSongSelect(song){
+    setLoading(true);setSearched(true);setMatched(null);setResults([]);
+    setMatchedItunes(null);setResultItunes({});setArtistSongs([]);
+    setArtistCandidates([]);setTitleCandidates([]);
+    setMatched(song);
+    const itunesData=await fetchItunesInfo(song.title,song.artist);
+    setMatchedItunes(itunesData);
+    const scored=computeResults(song,filters);
+    setResults(scored);
+    const map={};
+    await Promise.all(scored.map(async s=>{const d=await fetchItunesInfo(s.title,s.artist);if(d)map[s.id]=d;}));
+    setResultItunes(map);
+    setLoading(false);
+  }
+
   async function handleSearch(){
-    const q=query.trim().toLowerCase();
-    if(!q)return;
-    setLoading(true);setSearched(true);setMatched(null);setResults([]);setMatchedItunes(null);setResultItunes({});
-    const found=songDB.find(s=>s.title.toLowerCase().includes(q)||s.artist.toLowerCase().includes(q));
+    const aq=artistQuery.trim().toLowerCase();
+    const tq=titleQuery.trim().toLowerCase();
+    if(!aq&&!tq)return;
+    setArtistCandidates([]);setTitleCandidates([]);
+
+    // アーティスト名だけ入力された場合 → 曲一覧表示
+    if(aq&&!tq){
+      const songs=songDB.filter(s=>s.artist.toLowerCase().includes(aq));
+      if(songs.length>0){setArtistSongs(songs);setSearched(false);return;}
+    }
+
+    setLoading(true);setSearched(true);setMatched(null);setResults([]);
+    setMatchedItunes(null);setResultItunes({});setArtistSongs([]);
+
+    let found=null;
+    if(aq&&tq){
+      found=songDB.find(s=>s.title.toLowerCase().includes(tq)&&s.artist.toLowerCase().includes(aq));
+      if(!found) found=songDB.find(s=>s.title.toLowerCase().includes(tq));
+    } else if(tq){
+      found=songDB.find(s=>s.title.toLowerCase().includes(tq));
+    } else if(aq){
+      found=songDB.find(s=>s.artist.toLowerCase().includes(aq));
+    }
+
     if(found){
       setMatched(found);
       const itunesData=await fetchItunesInfo(found.title,found.artist);
@@ -4899,6 +4940,13 @@ function App(){
     hint:{textAlign:"center",marginTop:16},
     hintChips:{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:8,marginTop:10},
     hintChip:{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,padding:"8px 16px",color:"#a0a0c0",fontSize:13,cursor:"pointer"},
+    clearBtn:{background:"none",border:"none",color:"#8888aa",fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1},
+    candidateBox:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,overflow:"hidden",marginTop:4},
+    candidateItem:{display:"block",width:"100%",textAlign:"left",background:"none",border:"none",borderBottom:"1px solid rgba(255,255,255,0.05)",color:"#c0c0d8",padding:"10px 14px",fontSize:13,cursor:"pointer"},
+    artistSongBox:{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"16px",marginBottom:16},
+    artistSongTitle:{fontSize:14,fontWeight:700,color:"#c0c0d8",marginBottom:12},
+    artistSongGrid:{display:"flex",flexDirection:"column",gap:6},
+    artistSongItem:{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,padding:"10px 14px",textAlign:"left",cursor:"pointer"},
     // モーダル
     modalOverlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
     modal:{background:"#181828",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,padding:24,width:"100%",maxWidth:480},
@@ -5024,7 +5072,7 @@ function App(){
             <p style={{color:"#606070",fontSize:13}}>💡 試してみよう</p>
             <div style={S.hintChips}>
               {["ドライフラワー","夜に駆ける","Lemon","Shape of You","糸","うっせぇわ"].map(t=>(
-                <button key={t} style={S.hintChip} className="vm-hint-chip" onClick={()=>{setQuery(t);setTimeout(handleSearch,0);}}>{t}</button>
+                <button key={t} style={S.hintChip} className="vm-hint-chip" onClick={()=>{setTitleQuery(t);setArtistQuery("");setTimeout(handleSearch,0);}}>{t}</button>
               ))}
             </div>
           </div>
