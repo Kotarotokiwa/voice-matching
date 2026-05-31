@@ -9,9 +9,15 @@ export default async function handler(req, res) {
   const { artist } = req.body;
   if (!artist) return res.status(400).json({ error: 'artist is required' });
 
-  const prompt = `あなたは音楽の専門家です。「${artist}」の代表曲・人気曲を20曲リストアップして、各曲の歌唱データをJSON配列で返してください。
+  const prompt = `あなたは音楽の専門家です。「${artist}」が実際にリリースした代表曲・人気曲を20曲リストアップして、各曲の歌唱データをJSON配列で返してください。
 
-必ず実在する曲のみを返してください。以下のJSON配列形式のみで返してください（説明文・コードブロック不要）：
+【重要なルール】
+- 「${artist}」が実際にリリースした曲のみを返してください
+- 他のアーティストの曲は絶対に含めないでください
+- 曲名とアーティスト名が正確に一致することを確認してください
+- 不確かな曲は含めないでください
+
+以下のJSON配列形式のみで返してください（説明文・コードブロック不要）：
 [
   {
     "title": "曲名",
