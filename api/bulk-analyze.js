@@ -1,3 +1,5 @@
+export const maxDuration = 30; // タイムアウトを30秒に延長
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -9,7 +11,7 @@ export default async function handler(req, res) {
   const { artist } = req.body;
   if (!artist) return res.status(400).json({ error: 'artist is required' });
 
-  const prompt = `あなたは音楽の専門家です。「${artist}」が実際にリリースした代表曲・人気曲を20曲リストアップして、各曲の歌唱データをJSON配列で返してください。
+  const prompt = `あなたは音楽の専門家です。「${artist}」が実際にリリースした代表曲・人気曲を15曲リストアップして、各曲の歌唱データをJSON配列で返してください。
 
 【重要なルール】
 - 「${artist}」が実際にリリースした曲のみを返してください
@@ -33,7 +35,7 @@ export default async function handler(req, res) {
 ]
 
 MIDIノート番号の目安：C3=48, E3=52, G3=55, C4=60, E4=64, G4=67, C5=72, E5=76
-必ず20曲返してください。`;
+必ず15曲返してください。`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -45,7 +47,7 @@ MIDIノート番号の目安：C3=48, E3=52, G3=55, C4=60, E4=64, G4=67, C5=72, 
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4000,
+        max_tokens: 3000,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
