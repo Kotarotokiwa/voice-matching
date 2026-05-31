@@ -12485,8 +12485,8 @@ function App(){
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:4}}>
                           <div style={S.resultTitle}>{song.title}</div>
                           <button onClick={e=>{e.stopPropagation();toggleFavorite(song);}}
-                            style={{background:"none",border:"none",fontSize:20,cursor:"pointer",padding:"0 2px",flexShrink:0,lineHeight:1}}>
-                            {favorites.includes(`${song.title}___${song.artist}`)?"⭐":"☆"}
+                            style={{background:favorites.includes(`${song.title}___${song.artist}`)?"rgba(255,200,0,0.2)":"rgba(255,255,255,0.06)",border:"1px solid rgba(255,200,0,0.3)",borderRadius:6,fontSize:12,cursor:"pointer",padding:"2px 8px",flexShrink:0,color:favorites.includes(`${song.title}___${song.artist}`)?"#ffd060":"#9090b0"}}>
+                            {favorites.includes(`${song.title}___${song.artist}`)?"★お気に入り":"☆"}
                           </button>
                         </div>
                         <div style={S.resultArtist}>{song.artist}</div>
