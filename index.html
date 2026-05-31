@@ -11852,6 +11852,8 @@ function App(){
   const [authPassword, setAuthPassword] = React.useState("");
   const [authLoading, setAuthLoading] = React.useState(false);
   const [authError, setAuthError] = React.useState("");
+  const [authPassword2, setAuthPassword2] = React.useState("");
+  const [authSuccess, setAuthSuccess] = React.useState("");
   const [showFavorites, setShowFavorites] = React.useState(false);
   const [artistQuery,setArtistQuery]=React.useState("");
   const [titleQuery,setTitleQuery]=React.useState("");
@@ -12094,15 +12096,31 @@ function App(){
 
   // 認証処理
   async function handleAuth() {
-    setAuthLoading(true);setAuthError("");
+    setAuthLoading(true);setAuthError("");setAuthSuccess("");
     if (authMode === "login") {
       const { error } = await signIn(authEmail, authPassword);
       if (error) setAuthError("メールアドレスまたはパスワードが間違っています");
-      else setShowAuth(false);
-    } else {
+      else { setShowAuth(false); setAuthEmail(""); setAuthPassword(""); }
+    } else if (authMode === "signup") {
+      if (authPassword !== authPassword2) {
+        setAuthError("パスワードが一致しません");
+        setAuthLoading(false);
+        return;
+      }
+      if (authPassword.length < 6) {
+        setAuthError("パスワードは6文字以上にしてください");
+        setAuthLoading(false);
+        return;
+      }
       const { error } = await signUp(authEmail, authPassword);
       if (error) setAuthError("登録に失敗しました。メールアドレスを確認してください");
-      else { setAuthError(""); setAuthMode("login"); alert("確認メールを送りました！メールを確認してからログインしてください。"); }
+      else { setAuthSuccess("確認メールを送りました！メールのリンクをクリックしてからログインしてください。"); setAuthMode("login"); setAuthPassword(""); setAuthPassword2(""); }
+    } else if (authMode === "reset") {
+      const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+        redirectTo: window.location.origin,
+      });
+      if (error) setAuthError("メール送信に失敗しました");
+      else { setAuthSuccess("パスワードリセットメールを送りました！メールを確認してください。"); }
     }
     setAuthLoading(false);
   }
@@ -12464,7 +12482,13 @@ function App(){
                       {itunes?.artwork&&<img src={itunes.artwork} alt="" style={S.artworkSmall} className="vm-artwork-small"/>}
                       <div style={S.resultRank} className="vm-result-rank">#{i+1}</div>
                       <div style={S.resultMain} className="vm-result-main">
-                        <div style={S.resultTitle}>{song.title}</div>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:4}}>
+                          <div style={S.resultTitle}>{song.title}</div>
+                          <button onClick={e=>{e.stopPropagation();toggleFavorite(song);}}
+                            style={{background:"none",border:"none",fontSize:20,cursor:"pointer",padding:"0 2px",flexShrink:0,lineHeight:1}}>
+                            {favorites.includes(`${song.title}___${song.artist}`)?"⭐":"☆"}
+                          </button>
+                        </div>
                         <div style={S.resultArtist}>{song.artist}</div>
                         <div style={S.resultTags}><span style={S.tag}>{song.genre}</span><span style={S.tag}>跳躍 {"★".repeat(song.leap)}{"☆".repeat(5-song.leap)}</span><span style={S.tag}>高音 {"★".repeat(song.highNoteFreq)}{"☆".repeat(5-song.highNoteFreq)}</span></div>
                         <div style={{...S.resultTags,marginTop:4}}><span style={{...S.tag,color:tl.color}}>🥁 {song.tempo}BPM · {tl.label}</span><span style={S.tag}>{RHYTHM_LABEL[song.rhythmType].icon} {RHYTHM_LABEL[song.rhythmType].label}</span><span style={{...S.tag,color:diffColor(song.rhythmDiff)}}>リズム {diffLabel(song.rhythmDiff)}</span></div>
@@ -12502,7 +12526,7 @@ function App(){
         <div style={S.modalOverlay} onClick={e=>e.target===e.currentTarget&&setShowAuth(false)}>
           <div style={S.modal} className="vm-modal">
             <div style={S.modalTitle} className="vm-modal-title">
-              {authMode==="login"?"🔑 ログイン":"📝 新規登録"}
+              {authMode==="login"?"🔑 ログイン":authMode==="signup"?"📝 新規登録":"🔑 パスワードリセット"}
             </div>
             {/* タブ */}
             <div style={{display:"flex",gap:8,marginBottom:16}}>
@@ -12516,14 +12540,26 @@ function App(){
               </button>
             </div>
             <input style={S.modalInput} type="email" placeholder="メールアドレス" value={authEmail} onChange={e=>setAuthEmail(e.target.value)}/>
-            <input style={S.modalInput} type="password" placeholder="パスワード（6文字以上）" value={authPassword} onChange={e=>setAuthPassword(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&handleAuth()}/>
+            {authMode!=="reset"&&(
+              <input style={S.modalInput} type="password" placeholder="パスワード（6文字以上）" value={authPassword} onChange={e=>setAuthPassword(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&handleAuth()}/>
+            )}
+            {authMode==="signup"&&(
+              <input style={S.modalInput} type="password" placeholder="パスワード（確認用）" value={authPassword2||""} onChange={e=>setAuthPassword2(e.target.value)}/>
+            )}
             {authError&&<p style={{color:"#e06060",fontSize:13,marginBottom:8}}>{authError}</p>}
+            {authSuccess&&<p style={{color:"#60d090",fontSize:13,marginBottom:8}}>{authSuccess}</p>}
+            {authMode==="login"&&(
+              <p style={{fontSize:12,color:"#7070a0",marginBottom:8,cursor:"pointer",textDecoration:"underline"}}
+                onClick={()=>{setAuthMode("reset");setAuthError("");setAuthSuccess("");}}>
+                パスワードを忘れた方はこちら
+              </p>
+            )}
             <div style={S.modalBtnRow}>
               <button style={{...S.modalBtn,...S.modalBtnSecondary}} onClick={()=>setShowAuth(false)}>キャンセル</button>
               <button style={{...S.modalBtn,...S.modalBtnPrimary,...(authLoading?{opacity:0.6}:{})}}
                 onClick={handleAuth} disabled={authLoading}>
-                {authLoading?"処理中...":(authMode==="login"?"ログイン":"登録する")}
+                {authLoading?"処理中...":(authMode==="login"?"ログイン":authMode==="signup"?"登録する":"リセットメールを送る")}
               </button>
             </div>
           </div>
