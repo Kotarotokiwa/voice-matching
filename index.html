@@ -11832,10 +11832,6 @@ function App(){
   const [addMode,setAddMode]=React.useState("single"); // single or bulk
   const [bulkArtist,setBulkArtist]=React.useState("");
   const [bulkResults,setBulkResults]=React.useState([]);
-  const [addMode,setAddMode]=React.useState("single"); // "single" or "bulk"
-  const [bulkArtist,setBulkArtist]=React.useState("");
-  const [addLoading,setBulkLoading]=React.useState(false);
-  const [bulkResults,setBulkResults]=React.useState([]);
   const [bulkError,setBulkError]=React.useState("");
   // 起動時にSupabaseから追加曲を取得
   React.useEffect(() => {
