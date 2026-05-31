@@ -12416,8 +12416,8 @@ function App(){
                         <span style={{fontSize:11,color:"#7070a0",marginLeft:8}}>{s.tempo}BPM · {diffLabel(calcOverallDiff(s))}</span>
                       </div>
                       <button onClick={()=>setBulkResults(prev=>prev.filter((_,idx)=>idx!==i))}
-                        style={{background:"none",border:"none",color:"#e06060",fontSize:16,cursor:"pointer",padding:"0 4px",flexShrink:0}}>
-                        ✕
+                        style={{background:"rgba(224,96,96,0.2)",border:"1px solid rgba(224,96,96,0.4)",borderRadius:6,color:"#e06060",fontSize:13,cursor:"pointer",padding:"2px 8px",flexShrink:0}}>
+                        除外
                       </button>
                     </div>
                   ))}
