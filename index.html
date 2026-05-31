@@ -11652,6 +11652,8 @@ function App(){
   const [authPassword2, setAuthPassword2] = React.useState("");
   const [authSuccess, setAuthSuccess] = React.useState("");
   const [showFavorites, setShowFavorites] = React.useState(false);
+  const [displayCount, setDisplayCount] = React.useState(20);
+  const [sortMode, setSortMode] = React.useState("easy"); // easy, popular, range, tempo
   const [artistQuery,setArtistQuery]=React.useState("");
   const [titleQuery,setTitleQuery]=React.useState("");
   const [artistCandidates,setArtistCandidates]=React.useState([]);
@@ -11720,7 +11722,7 @@ function App(){
 
   function computeResults(base,f,db){
     const d=db||songDB;
-    return d.map(s=>({...s,score:calcSimilarity(base,s,f)})).filter(s=>s.score>0).sort((a,b)=>{const da=calcOverallDiff(a),db=calcOverallDiff(b);if(da!==db)return da-db;return b.score-a.score;}).slice(0,6);
+    return d.map(s=>({...s,score:calcSimilarity(base,s,f)})).filter(s=>s.score>0).sort((a,b)=>{const da=calcOverallDiff(a),db=calcOverallDiff(b);if(da!==db)return da-db;return b.score-a.score;});
   }
 
   // あいまい検索：アーティスト候補（表記ゆれ対応）
@@ -11753,7 +11755,7 @@ function App(){
   async function handleSongSelect(song){
     setLoading(true);setSearched(true);setMatched(null);setResults([]);
     setMatchedItunes(null);setResultItunes({});setArtistSongs([]);
-    setArtistCandidates([]);setTitleCandidates([]);
+    setArtistCandidates([]);setTitleCandidates([]);setDisplayCount(20);
     setMatched(song);
     const itunesData=await fetchItunesInfo(song.title,song.artist);
     setMatchedItunes(itunesData);
@@ -12173,6 +12175,15 @@ function App(){
               ))}
             </div>
           )}
+          {/* もっと見るボタン */}
+          {results.length > displayCount && (
+            <div style={{textAlign:"center",marginTop:16}}>
+              <button onClick={()=>setDisplayCount(prev=>prev+20)}
+                style={{background:"rgba(136,96,224,0.2)",border:"1px solid rgba(136,96,224,0.4)",borderRadius:20,color:"#c0a0ff",padding:"10px 32px",fontSize:14,cursor:"pointer",fontWeight:700}}>
+                もっと見る（残り{results.length - displayCount}曲）
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 曲名検索 */}
@@ -12273,7 +12284,25 @@ function App(){
                 </div>
               </div>
 
-              <div style={S.resultsHeader}><span style={S.resultsTitle}>🎤 歌いやすい順に表示</span><span style={S.resultCount}>{results.length}件</span></div>
+              {/* ソートボタン */}
+          {results.length>0&&(
+            <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+              {[
+                {key:"easy",label:"🎵 歌いやすい順"},
+                {key:"popular",label:"🔥 人気順"},
+                {key:"range",label:"🎤 音域近い順"},
+                {key:"tempo",label:"⚡ テンポ順"},
+              ].map(s=>(
+                <button key={s.key} onClick={()=>{setSortMode(s.key);setDisplayCount(20);}}
+                  style={{padding:"6px 12px",borderRadius:20,border:"1px solid rgba(255,255,255,0.15)",fontSize:12,cursor:"pointer",
+                    background:sortMode===s.key?"rgba(136,96,224,0.3)":"rgba(255,255,255,0.05)",
+                    color:sortMode===s.key?"#d0b0ff":"#9090b0",fontWeight:sortMode===s.key?700:400}}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div style={S.resultsHeader}><span style={S.resultsTitle}>🎤 歌いやすい順に表示</span><span style={S.resultCount}>{results.length}件</span></div>
               {results.length===0?<div style={S.notFound}><p style={{color:"#a0a0b0"}}>条件に合う曲が見つかりませんでした。</p></div>:(
                 <div style={S.resultGrid}>
                   {results.map((song,i)=>{
