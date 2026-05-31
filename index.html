@@ -11532,6 +11532,41 @@ const SUPABASE_URL = "https://qnsidtuqmzyxtymjjrjt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_rMlfXlLVCwhfEYoPT7aYyg_1u5xuopE";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ── 認証関連 ──────────────────────────────
+async function signUp(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  return { data, error };
+}
+async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  return { data, error };
+}
+async function signOut() {
+  await supabase.auth.signOut();
+}
+async function getUser() {
+  const { data } = await supabase.auth.getUser();
+  return data?.user || null;
+}
+
+// ── お気に入り関連 ──────────────────────────────
+async function addFavorite(userId, title, artist) {
+  const { error } = await supabase.from('favorites').insert([{
+    user_id: userId, song_title: title, song_artist: artist
+  }]);
+  return !error;
+}
+async function removeFavorite(userId, title, artist) {
+  const { error } = await supabase.from('favorites')
+    .delete().eq('user_id', userId).eq('song_title', title).eq('song_artist', artist);
+  return !error;
+}
+async function getFavorites(userId) {
+  const { data } = await supabase.from('favorites')
+    .select('*').eq('user_id', userId);
+  return data || [];
+}
+
 // Supabaseから追加曲を取得
 async function fetchExtraSongsFromDB() {
   try {
@@ -11809,6 +11844,15 @@ function App(){
   const [songDB, setSongDB] = React.useState(()=>loadSongDB());
   const [dbLoading, setDbLoading] = React.useState(true);
   const [extraCount, setExtraCount] = React.useState(0);
+  const [currentUser, setCurrentUser] = React.useState(null);
+  const [favorites, setFavorites] = React.useState([]);
+  const [showAuth, setShowAuth] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState("login"); // login or signup
+  const [authEmail, setAuthEmail] = React.useState("");
+  const [authPassword, setAuthPassword] = React.useState("");
+  const [authLoading, setAuthLoading] = React.useState(false);
+  const [authError, setAuthError] = React.useState("");
+  const [showFavorites, setShowFavorites] = React.useState(false);
   const [artistQuery,setArtistQuery]=React.useState("");
   const [titleQuery,setTitleQuery]=React.useState("");
   const [artistCandidates,setArtistCandidates]=React.useState([]);
@@ -11833,6 +11877,30 @@ function App(){
   const [bulkArtist,setBulkArtist]=React.useState("");
   const [bulkResults,setBulkResults]=React.useState([]);
   
+  // 起動時にユーザー認証チェック
+  React.useEffect(() => {
+    (async () => {
+      const user = await getUser();
+      if (user) {
+        setCurrentUser(user);
+        const favs = await getFavorites(user.id);
+        setFavorites(favs.map(f => `${f.song_title}___${f.song_artist}`));
+      }
+    })();
+    // 認証状態の変化を監視
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        const favs = await getFavorites(session.user.id);
+        setFavorites(favs.map(f => `${f.song_title}___${f.song_artist}`));
+      } else {
+        setCurrentUser(null);
+        setFavorites([]);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   // 起動時にSupabaseから追加曲を取得
   React.useEffect(() => {
     (async () => {
@@ -12005,6 +12073,38 @@ function App(){
     saveSongDB(newDB);
     setExtraCount(prev=>prev+addedCount);
     setAddLoading(false);
+  }
+
+  // お気に入りトグル
+  async function toggleFavorite(song) {
+    if (!currentUser) {
+      setShowAuth(true);
+      return;
+    }
+    const key = `${song.title}___${song.artist}`;
+    const isFav = favorites.includes(key);
+    if (isFav) {
+      await removeFavorite(currentUser.id, song.title, song.artist);
+      setFavorites(prev => prev.filter(f => f !== key));
+    } else {
+      await addFavorite(currentUser.id, song.title, song.artist);
+      setFavorites(prev => [...prev, key]);
+    }
+  }
+
+  // 認証処理
+  async function handleAuth() {
+    setAuthLoading(true);setAuthError("");
+    if (authMode === "login") {
+      const { error } = await signIn(authEmail, authPassword);
+      if (error) setAuthError("メールアドレスまたはパスワードが間違っています");
+      else setShowAuth(false);
+    } else {
+      const { error } = await signUp(authEmail, authPassword);
+      if (error) setAuthError("登録に失敗しました。メールアドレスを確認してください");
+      else { setAuthError(""); setAuthMode("login"); alert("確認メールを送りました！メールを確認してからログインしてください。"); }
+    }
+    setAuthLoading(false);
   }
 
   // アーティスト一括分析
@@ -12187,7 +12287,55 @@ function App(){
         <header style={S.header}>
           <div style={S.logoRow}><span style={S.logoIcon}>♪</span><h1 style={S.logo} className="vm-logo">VoiceMatch</h1></div>
           <p style={S.tagline} className="vm-tagline">あなたの声域・リズム感に合う曲を見つけよう</p>
+          {/* ユーザーメニュー */}
+          <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:12}}>
+            {currentUser ? (<>
+              <button onClick={()=>setShowFavorites(!showFavorites)}
+                style={{background:"rgba(255,180,50,0.15)",border:"1px solid rgba(255,180,50,0.3)",borderRadius:20,color:"#ffd060",padding:"6px 16px",fontSize:13,cursor:"pointer"}}>
+                ⭐ お気に入り ({favorites.length})
+              </button>
+              <button onClick={async()=>{await signOut();}}
+                style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#9090b0",padding:"6px 16px",fontSize:13,cursor:"pointer"}}>
+                ログアウト
+              </button>
+            </>) : (
+              <button onClick={()=>setShowAuth(true)}
+                style={{background:"linear-gradient(135deg,#8860e0,#5090d8)",border:"none",borderRadius:20,color:"#fff",padding:"6px 20px",fontSize:13,cursor:"pointer",fontWeight:700}}>
+                ログイン / 新規登録
+              </button>
+            )}
+          </div>
         </header>
+
+        {/* お気に入り一覧 */}
+        {showFavorites&&currentUser&&(
+          <div style={{background:"rgba(255,180,50,0.08)",border:"1px solid rgba(255,180,50,0.2)",borderRadius:14,padding:16,marginBottom:16}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#ffd060",marginBottom:12}}>⭐ お気に入り一覧</div>
+            {favorites.length===0?(
+              <p style={{color:"#9090b0",fontSize:13}}>まだお気に入りがありません。曲の♡ボタンで追加できます！</p>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {favorites.map(key=>{
+                  const [title,artist]=key.split("___");
+                  const song=songDB.find(s=>s.title===title&&s.artist===artist);
+                  return(
+                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(255,255,255,0.04)",borderRadius:8}}>
+                      <div>
+                        <span style={{fontSize:13,color:"#e0e0f0",fontWeight:600}}>{title}</span>
+                        <span style={{fontSize:11,color:"#7070a0",marginLeft:8}}>{artist}</span>
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        {song&&<span style={{fontSize:11,color:"#8888a8"}}>{song.tempo}BPM</span>}
+                        <button onClick={()=>toggleFavorite({title,artist})}
+                          style={{background:"none",border:"none",color:"#ffd060",fontSize:16,cursor:"pointer"}}>⭐</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* アーティスト名検索 */}
         <div style={{marginBottom:8,position:"relative"}}>
@@ -12348,6 +12496,39 @@ function App(){
           </div>
         )}
       </div>
+
+      {/* 認証モーダル */}
+      {showAuth&&(
+        <div style={S.modalOverlay} onClick={e=>e.target===e.currentTarget&&setShowAuth(false)}>
+          <div style={S.modal} className="vm-modal">
+            <div style={S.modalTitle} className="vm-modal-title">
+              {authMode==="login"?"🔑 ログイン":"📝 新規登録"}
+            </div>
+            {/* タブ */}
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <button onClick={()=>{setAuthMode("login");setAuthError("");}}
+                style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",fontSize:13,background:authMode==="login"?"rgba(136,96,224,0.3)":"rgba(255,255,255,0.05)",color:authMode==="login"?"#d0b0ff":"#9090b0",fontWeight:authMode==="login"?700:400}}>
+                ログイン
+              </button>
+              <button onClick={()=>{setAuthMode("signup");setAuthError("");}}
+                style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",fontSize:13,background:authMode==="signup"?"rgba(136,96,224,0.3)":"rgba(255,255,255,0.05)",color:authMode==="signup"?"#d0b0ff":"#9090b0",fontWeight:authMode==="signup"?700:400}}>
+                新規登録
+              </button>
+            </div>
+            <input style={S.modalInput} type="email" placeholder="メールアドレス" value={authEmail} onChange={e=>setAuthEmail(e.target.value)}/>
+            <input style={S.modalInput} type="password" placeholder="パスワード（6文字以上）" value={authPassword} onChange={e=>setAuthPassword(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&handleAuth()}/>
+            {authError&&<p style={{color:"#e06060",fontSize:13,marginBottom:8}}>{authError}</p>}
+            <div style={S.modalBtnRow}>
+              <button style={{...S.modalBtn,...S.modalBtnSecondary}} onClick={()=>setShowAuth(false)}>キャンセル</button>
+              <button style={{...S.modalBtn,...S.modalBtnPrimary,...(authLoading?{opacity:0.6}:{})}}
+                onClick={handleAuth} disabled={authLoading}>
+                {authLoading?"処理中...":(authMode==="login"?"ログイン":"登録する")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ✨ AIで曲を追加モーダル */}
       {showAdd&&(
