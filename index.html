@@ -4970,20 +4970,73 @@ function App(){
           <p style={S.tagline} className="vm-tagline">あなたの声域・リズム感に合う曲を見つけよう</p>
         </header>
 
-        <div style={S.searchBox} className="vm-search-box">
-          <span style={{fontSize:16,marginRight:8,opacity:0.5}}>🔍</span>
-          <input style={S.input} className="vm-search-input" placeholder="曲名 or アーティスト名を入力..." value={query}
-            onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSearch()}/>
-          <button style={S.searchBtn} className="vm-search-btn" onClick={handleSearch}>検索</button>
+        {/* アーティスト名検索 */}
+        <div style={{marginBottom:8,position:"relative"}}>
+          <div style={S.searchBox} className="vm-search-box">
+            <span style={{fontSize:15,marginRight:8,opacity:0.6}}>🎤</span>
+            <input style={S.input} className="vm-search-input"
+              placeholder="アーティスト名（例：back number、YOASOBI）"
+              value={artistQuery}
+              onChange={e=>{setArtistQuery(e.target.value);handleArtistSuggest(e.target.value);}}
+              onKeyDown={e=>e.key==="Enter"&&handleSearch()}/>
+            {artistQuery&&<button style={S.clearBtn} onClick={()=>{setArtistQuery("");setArtistCandidates([]);}}>×</button>}
+          </div>
+          {artistCandidates.length>0&&(
+            <div style={S.candidateBox}>
+              {artistCandidates.map(a=>(
+                <button key={a} style={S.candidateItem}
+                  onClick={()=>{setArtistQuery(a);setArtistCandidates([]);handleArtistSelect(a);}}>
+                  🎤 {a}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* 曲追加ボタン＆曲数表示 */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <button style={S.addBtn} className="vm-add-btn" onClick={()=>setShowAdd(true)}>
-            ✨ AIで曲を追加
-          </button>
+        {/* 曲名検索 */}
+        <div style={{marginBottom:12,position:"relative"}}>
+          <div style={S.searchBox} className="vm-search-box">
+            <span style={{fontSize:15,marginRight:8,opacity:0.6}}>🎵</span>
+            <input style={S.input} className="vm-search-input"
+              placeholder="曲名（例：夜、ドライフラワー）"
+              value={titleQuery}
+              onChange={e=>{setTitleQuery(e.target.value);handleTitleSuggest(e.target.value);}}
+              onKeyDown={e=>e.key==="Enter"&&handleSearch()}/>
+            {titleQuery&&<button style={S.clearBtn} onClick={()=>{setTitleQuery("");setTitleCandidates([]);}}>×</button>}
+          </div>
+          {titleCandidates.length>0&&(
+            <div style={S.candidateBox}>
+              {titleCandidates.map(s=>(
+                <button key={s.id} style={S.candidateItem}
+                  onClick={()=>{setTitleQuery(s.title);setArtistQuery(s.artist);setTitleCandidates([]);handleSongSelect(s);}}>
+                  🎵 {s.title} <span style={{color:"#7070a0",fontSize:11}}>/ {s.artist}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* アーティストの曲一覧 */}
+        {artistSongs.length>0&&!matched&&(
+          <div style={S.artistSongBox}>
+            <div style={S.artistSongTitle}>🎤 {artistQuery} の曲一覧（{artistSongs.length}曲）</div>
+            <div style={S.artistSongGrid}>
+              {artistSongs.map(s=>(
+                <button key={s.id} style={S.artistSongItem} onClick={()=>handleSongSelect(s)}>
+                  <div style={{fontWeight:700,fontSize:13,color:"#e0e0f0"}}>{s.title}</div>
+                  <div style={{fontSize:11,color:"#7070a0",marginTop:2}}>{diffLabel(calcOverallDiff(s))} · {s.tempo}BPM · {tempoLabel(s.tempo).label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 検索ボタン＆追加ボタン */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <button style={S.searchBtn} className="vm-search-btn" onClick={handleSearch}>🔍 検索</button>
+          <button style={{...S.addBtn,marginBottom:0}} className="vm-add-btn" onClick={()=>setShowAdd(true)}>✨ AIで曲を追加</button>
           <span style={{fontSize:12,color:"#606070"}}>
-            {dbLoading ? "読み込み中..." : `DB: ${songDB.length}曲${extraCount > 0 ? ` (+${extraCount}共有)` : ""}`}
+            {dbLoading?"読み込み中...":`DB: ${songDB.length}曲`}
           </span>
         </div>
 
