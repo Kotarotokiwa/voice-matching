@@ -11334,6 +11334,13 @@ async function signIn(email, password) {
 async function signOut() {
   await supabase.auth.signOut();
 }
+async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin }
+  });
+  if (error) console.error(error);
+}
 async function getUser() {
   const { data } = await supabase.auth.getUser();
   return data?.user || null;
@@ -12348,6 +12355,16 @@ function App(){
                 onClick={()=>{setAuthMode("reset");setAuthError("");setAuthSuccess("");}}>
                 パスワードを忘れた方はこちら
               </p>
+            )}
+            {/* ソーシャルログイン */}
+            {authMode!=="reset"&&(
+              <div style={{marginBottom:12}}>
+                <div style={{textAlign:"center",color:"#7070a0",fontSize:12,marginBottom:8}}>または</div>
+                <button onClick={signInWithGoogle}
+                  style={{width:"100%",padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.08)",color:"#e0e0f0",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  <span style={{fontSize:18}}>G</span> Googleでログイン
+                </button>
+              </div>
             )}
             <div style={S.modalBtnRow}>
               <button style={{...S.modalBtn,...S.modalBtnSecondary}} onClick={()=>setShowAuth(false)}>キャンセル</button>
