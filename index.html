@@ -4642,6 +4642,43 @@ function saveSongDB(songs){
 }
 
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+
+// ── 表記ゆれ対応 ──────────────────────────────
+// ひらがな→カタカナ変換
+function toKatakana(str){
+  return str.replace(/[ぁ-ゖ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+0x60));
+}
+// カタカナ→ひらがな変換
+function toHiragana(str){
+  return str.replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
+}
+// 全角英数→半角変換
+function toHalfWidth(str){
+  return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0));
+}
+// 半角カタカナ→全角カタカナ
+const HANKAKU_MAP={"ｦ":"ヲ","ｧ":"ァ","ｨ":"ィ","ｩ":"ゥ","ｪ":"ェ","ｫ":"ォ","ｬ":"ャ","ｭ":"ュ","ｮ":"ョ","ｯ":"ッ","ｰ":"ー","ｱ":"ア","ｲ":"イ","ｳ":"ウ","ｴ":"エ","ｵ":"オ","ｶ":"カ","ｷ":"キ","ｸ":"ク","ｹ":"ケ","ｺ":"コ","ｻ":"サ","ｼ":"シ","ｽ":"ス","ｾ":"セ","ｿ":"ソ","ﾀ":"タ","ﾁ":"チ","ﾂ":"ツ","ﾃ":"テ","ﾄ":"ト","ﾅ":"ナ","ﾆ":"ニ","ﾇ":"ヌ","ﾈ":"ネ","ﾉ":"ノ","ﾊ":"ハ","ﾋ":"ヒ","ﾌ":"フ","ﾍ":"ヘ","ﾎ":"ホ","ﾏ":"マ","ﾐ":"ミ","ﾑ":"ム","ﾒ":"メ","ﾓ":"モ","ﾔ":"ヤ","ﾕ":"ユ","ﾖ":"ヨ","ﾗ":"ラ","ﾘ":"リ","ﾙ":"ル","ﾚ":"レ","ﾛ":"ロ","ﾜ":"ワ","ﾝ":"ン","ﾞ":"゛","ﾟ":"゜"};
+function toZenkakuKana(str){return str.replace(/[ｦ-ﾟ]/g,ch=>HANKAKU_MAP[ch]||ch);}
+
+// 文字列を正規化（ひらがな・カタカナ・英数字の表記ゆれを吸収）
+function normalize(str){
+  if(!str)return "";
+  let s=str.toLowerCase();
+  s=toHalfWidth(s);      // 全角英数→半角
+  s=toZenkakuKana(s);    // 半角カナ→全角カナ
+  s=toHiragana(s);       // カタカナ→ひらがな（統一）
+  s=s.replace(/\s+/g,""); // スペース除去
+  s=s.replace(/[・\-\_]/g,""); // 区切り文字除去
+  return s;
+}
+
+// 文字列が検索クエリにマッチするか（表記ゆれ対応）
+function fuzzyMatch(target, query){
+  if(!target||!query)return false;
+  const t=normalize(target);
+  const q=normalize(query);
+  return t.includes(q);
+}
 function midiToNote(m){return NOTE_NAMES[m%12]+(Math.floor(m/12)-1);}
 function tempoLabel(b){if(b<70)return{label:"スロー",color:"#60c0d0"};if(b<100)return{label:"ミドル",color:"#80d090"};if(b<140)return{label:"アップ",color:"#d0b040"};return{label:"ハイテンポ",color:"#e07060"};}
 const RHYTHM_LABEL={straight:{label:"4つ打ち",icon:"🟦"},offbeat:{label:"裏拍あり",icon:"🟨"},complex:{label:"複合リズム",icon:"🟥"}};
@@ -4738,26 +4775,25 @@ function App(){
     return d.map(s=>({...s,score:calcSimilarity(base,s,f)})).filter(s=>s.score>0).sort((a,b)=>{const da=calcOverallDiff(a),db=calcOverallDiff(b);if(da!==db)return da-db;return b.score-a.score;}).slice(0,6);
   }
 
-  // あいまい検索：アーティスト候補
+  // あいまい検索：アーティスト候補（表記ゆれ対応）
   function handleArtistSuggest(val){
     if(!val.trim()){setArtistCandidates([]);return;}
-    const q=val.trim().toLowerCase();
     const artists=[...new Set(songDB.map(s=>s.artist))];
-    const matched=artists.filter(a=>a.toLowerCase().includes(q)).slice(0,6);
+    const matched=artists.filter(a=>fuzzyMatch(a,val)).slice(0,6);
     setArtistCandidates(matched);
   }
 
-  // あいまい検索：曲名候補
+  // あいまい検索：曲名候補（表記ゆれ対応）
   function handleTitleSuggest(val){
     if(!val.trim()){setTitleCandidates([]);return;}
-    const q=val.trim().toLowerCase();
-    const matched=songDB.filter(s=>s.title.toLowerCase().includes(q)).slice(0,8);
+    // 曲名・アーティスト名どちらにもマッチ
+    const matched=songDB.filter(s=>fuzzyMatch(s.title,val)||fuzzyMatch(s.artist,val)).slice(0,8);
     setTitleCandidates(matched);
   }
 
   // アーティスト選択 → そのアーティストの曲一覧表示
   function handleArtistSelect(artist){
-    const songs=songDB.filter(s=>s.artist===artist);
+    const songs=songDB.filter(s=>fuzzyMatch(s.artist,artist));
     setArtistSongs(songs);
     setTitleCandidates([]);
     setMatched(null);
@@ -4782,14 +4818,14 @@ function App(){
   }
 
   async function handleSearch(){
-    const aq=artistQuery.trim().toLowerCase();
-    const tq=titleQuery.trim().toLowerCase();
+    const aq=artistQuery.trim();
+    const tq=titleQuery.trim();
     if(!aq&&!tq)return;
     setArtistCandidates([]);setTitleCandidates([]);
 
     // アーティスト名だけ入力された場合 → 曲一覧表示
     if(aq&&!tq){
-      const songs=songDB.filter(s=>s.artist.toLowerCase().includes(aq));
+      const songs=songDB.filter(s=>fuzzyMatch(s.artist,aq));
       if(songs.length>0){setArtistSongs(songs);setSearched(false);return;}
     }
 
@@ -4798,12 +4834,13 @@ function App(){
 
     let found=null;
     if(aq&&tq){
-      found=songDB.find(s=>s.title.toLowerCase().includes(tq)&&s.artist.toLowerCase().includes(aq));
-      if(!found) found=songDB.find(s=>s.title.toLowerCase().includes(tq));
+      // アーティスト+曲名で絞り込み
+      found=songDB.find(s=>fuzzyMatch(s.title,tq)&&fuzzyMatch(s.artist,aq));
+      if(!found) found=songDB.find(s=>fuzzyMatch(s.title,tq));
     } else if(tq){
-      found=songDB.find(s=>s.title.toLowerCase().includes(tq));
+      found=songDB.find(s=>fuzzyMatch(s.title,tq)||fuzzyMatch(s.artist,tq));
     } else if(aq){
-      found=songDB.find(s=>s.artist.toLowerCase().includes(aq));
+      found=songDB.find(s=>fuzzyMatch(s.artist,aq));
     }
 
     if(found){
