@@ -4694,26 +4694,6 @@ function App(){
   const [songDB, setSongDB] = React.useState(()=>loadSongDB());
   const [dbLoading, setDbLoading] = React.useState(true);
   const [extraCount, setExtraCount] = React.useState(0);
-
-  // 起動時にSupabaseから追加曲を取得
-  React.useEffect(() => {
-    (async () => {
-      setDbLoading(true);
-      const extraSongs = await fetchExtraSongsFromDB();
-      if (extraSongs.length > 0) {
-        const ids = new Set(INITIAL_SONGS.map(s => s.id));
-        const merged = [...loadSongDB(), ...extraSongs.filter(s => {
-          // タイトル+アーティストが被っていない曲だけ追加
-          return !loadSongDB().some(existing => 
-            existing.title === s.title && existing.artist === s.artist
-          );
-        })];
-        setSongDB(merged);
-        setExtraCount(extraSongs.length);
-      }
-      setDbLoading(false);
-    })();
-  }, []);
   const [artistQuery,setArtistQuery]=React.useState("");
   const [titleQuery,setTitleQuery]=React.useState("");
   const [artistCandidates,setArtistCandidates]=React.useState([]);
@@ -4734,6 +4714,24 @@ function App(){
   const [addLoading,setAddLoading]=React.useState(false);
   const [addResult,setAddResult]=React.useState(null);
   const [addError,setAddError]=React.useState("");
+
+  // 起動時にSupabaseから追加曲を取得
+  React.useEffect(() => {
+    (async () => {
+      setDbLoading(true);
+      const extraSongs = await fetchExtraSongsFromDB();
+      if (extraSongs.length > 0) {
+        const merged = [...loadSongDB(), ...extraSongs.filter(s => {
+          return !loadSongDB().some(existing =>
+            existing.title === s.title && existing.artist === s.artist
+          );
+        })];
+        setSongDB(merged);
+        setExtraCount(extraSongs.length);
+      }
+      setDbLoading(false);
+    })();
+  }, []);
 
   function computeResults(base,f,db){
     const d=db||songDB;
