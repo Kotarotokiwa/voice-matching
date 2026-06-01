@@ -12886,14 +12886,15 @@ function App(){
                   const [title,artist]=key.split("___");
                   const song=songDB.find(s=>s.title===title&&s.artist===artist);
                   return(
-                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(255,255,255,0.04)",borderRadius:8}}>
+                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(255,255,255,0.04)",borderRadius:8,cursor:"pointer"}}
+                      onClick={()=>{if(song){handleSongSelect(song);setShowFavorites(false);}}}>
                       <div>
                         <span style={{fontSize:13,color:"#e0e0f0",fontWeight:600}}>{title}</span>
                         <span style={{fontSize:11,color:"#7070a0",marginLeft:8}}>{artist}</span>
                       </div>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
                         {song&&<span style={{fontSize:11,color:"#8888a8"}}>{song.tempo}BPM</span>}
-                        <button onClick={()=>toggleFavorite({title,artist})}
+                        <button onClick={e=>{e.stopPropagation();toggleFavorite({title,artist});}}
                           style={{background:"none",border:"none",color:"#ffd060",fontSize:16,cursor:"pointer"}}>⭐</button>
                       </div>
                     </div>
